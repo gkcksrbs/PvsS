@@ -113,7 +113,7 @@
             let curPlayer = ballMap[myId];
             let data = {};
             data = {
-                id : curPlayer.id,
+                id: myId,
                 x: curPlayer.x,
                 y: curPlayer.y,
             };
@@ -132,27 +132,10 @@
                 }
             }
         }
+        
 
-        function itemCollisionDetection(){
-            let ball = ballMap[myId]
-            for(var i=0; i<items.length; i++){
-                if(Math.sqrt((ball.x-items[i].startingX)**2+(ball.y-items[i].startingY)**2)<=itemRadius+radius){
-                    // ball.state=0;
-                    socket.emit('item_acquire',{id:myId});
-                    break;
-                }
-            }
-        }
-
+        
         var socket = io();
-
-        socket.on('force_disconnect', function(data){
-            alert("현재 방에 3명 이상이거나 게임중 입니다.")
-            window.close();
-            self.close();
-            window.opener = window.location.href; self.close();
-            window.open('about:blank', '_self').close();   
-        })
 
         socket.on('user_id', function(data){
             myId = data;
@@ -176,9 +159,10 @@
         }
         })
 
+        
         var enemys = [];
         var enemyRadius = 10;
-        var enemyAliveTime = 400;
+        var enemyAliveTime = 300;
         function EnemyBall(id){
             this.id = id;
             this.color = "#000000";
@@ -191,12 +175,13 @@
             this.wall = 0;
         }
 
+
         var items = [];
         var itemRadius = 20;
         var itemAliveTime = 1000;
         function itemBall(id){
             this.id = id;
-            this.color = "#C0FFEE";
+            this.color = "#6f4e37";
             this.startingX = 1024/2;
             this.startingY = 768/2;
             this.destinationX = 0;
@@ -206,22 +191,26 @@
             this.wall = 0;
         }
 
-
+        socket.on('force_disconnect', function(data){
+            alert("현재 방에 3명 이상이거나 게임중 입니다.")
+            window.close();
+            self.close();
+            window.opener = window.location.href; self.close();
+            window.open('about:blank', '_self').close();   
+        })
         socket.on('enemy_generator', function(data){
             let enemy = new EnemyBall()
             enemy.startingX = data.startingX;
             enemy.startingY = data.startingY;
             enemy.initialX = data.startingX;
             enemy.initialY = data.startingY;
-            //적 목적지 데이터 받아오기 해야함
             enemy.destinationX = data.destinationX;
             enemy.destinationY = data.destinationY;
             enemy.wall = data.wall;
-            enemy.speedX = data.speedX;
-            enemy.speedY = data.speedY;
             enemys.push(enemy);
-            // console.log(enemys);
+            console.log(enemys);
         })
+
 
         socket.on('item_generator', function(data){
             let item = new itemBall()
@@ -233,23 +222,48 @@
             item.destinationX = data.destinationX;
             item.destinationY = data.destinationY;
             item.wall = data.wall;
-            item.speedX = data.speedX;
-            item.speedY = data.speedY;
+            // item.speedX = data.speedX;
+            // item.speedY = data.speedY;
             items.push(item);
             console.log(items);
         })
 
-        function renderGame() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                collisionDetection();
-                itemCollisionDetection();
-                for (let i = 0; i < balls.length; i++) {
+        let stage = 1;
+        //스테이지 넘버
+        socket.on('stage_number', function(data){
+            stage = data.stage;
+            timer = data.timer;
+            console.log(stage)
+        })
+
+
+        socket.on('game_over', function(data){//전 플레이어가 죽으면 나오는 이벤트
+            if (data.isFail){
+                alert("The professor won! ::: Game Over :::: Your Grade is F");
+                window.open('about:blank', '_self');
+            }
+        })
+
+        socket.on('game_win', function(data){
+            alert("The students won! ::::  Congratulations! :::: Your Grade is A+")
+        })
+
+        function renderStage(){
+            ctx.beginPath();
+            ctx.fillStyle = '#000000';
+            ctx.font = '30px Arial';
+            ctx.fillText(`스테이지 ${stage}`,30,30);
+            ctx.closePath();
+        }
+
+        function renderPlayers(){
+            for (let i = 0; i < balls.length; i++) {
                     let ball = balls[i];
                     if (ball.state == 0){
                         continue
                     }
-                    ctx.fillStyle = ball.color;
                     ctx.beginPath();
+                    ctx.fillStyle = ball.color;
                     ctx.arc(ball.x, ball.y, radius, 0, Math.PI * 2, false);
                     ctx.closePath();
                     ctx.fill();
@@ -259,28 +273,38 @@
                     ctx.fillText(`player ${i}`,ball.x-radius-7, ball.y-radius);
                     ctx.closePath();
                 }
+                let curPlayer = ballMap[myId];
+                if (rightPressed){
+                    if (curPlayer.x <= 1024 - radius){
+                        curPlayer.x += playerSpeed;
+                    }
+                }
+                if (leftPressed ){
+                    if(curPlayer.x >= 0 + radius){
+                        curPlayer.x -= playerSpeed;
+                    }
+                }
+                if(upPressed ){
+                    if(curPlayer.y >= 0 + radius){
+                        curPlayer.y -= playerSpeed;
+                    }
+                }
+                if(downPressed ){
+                    if(curPlayer.y <= 768 - radius){
+                        curPlayer.y += playerSpeed;
+                    }
+                }
+        }
 
-                for (let j = 0; j < enemys.length; j++){
+        function renderEnemys(){
+            for (let j = 0; j < enemys.length; j++){
                     let enemy = enemys[j];
-
-                    ctx.fillStyle = enemy.color;
                     ctx.beginPath();
+                    ctx.fillStyle = enemy.color;
                     ctx.arc(enemy.startingX, enemy.startingY, enemyRadius, 0, Math.PI *2, false);
                     ctx.closePath();
                     ctx.fill();
                 }
-
-                for(let j=0; j<items.length;j++){
-                    let item=items[j];
-
-                    ctx.fillStyle = item.color;
-                    ctx.beginPath();
-                    ctx.arc(item.startingX, item.startingY, itemRadius, 0, Math.PI *2, false);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-
-                // 적 위치 옮겨주는 코드
                 for ( let k = 0 ; k < enemys.length; k++){
                     let enemy = enemys[k];
                     if(enemy.wall == 0){//leftSide
@@ -360,8 +384,19 @@
                         enemys.splice(k,1);
                     }
                 }
+        }
 
-                // 아이템 위치 옮겨주는 코드
+
+        
+        function renderItems(){
+            for (let j = 0; j < items.length; j++){
+                    let item = items[j];
+                    ctx.beginPath();
+                    ctx.fillStyle = item.color;
+                    ctx.arc(item.startingX, item.startingY, itemRadius, 0, Math.PI *2, false);
+                    ctx.closePath();
+                    ctx.fill();
+                }
                 for ( let k = 0 ; k < items.length; k++){
                     let item = items[k];
                     if(item.wall == 0){//leftSide
@@ -441,31 +476,37 @@
                         items.splice(k,1);
                     }
                 }
+        }
 
-                // 플레이어 옮겨주는 코드
-                let curPlayer = ballMap[myId];
-                if (rightPressed){
-                    if (curPlayer.x <= 1024){
-                        curPlayer.x += playerSpeed;
-                    }
-                }
-                if (leftPressed ){
-                    if(curPlayer.x >= 0){
-                        curPlayer.x -= playerSpeed;
-                    }
-                }
-                if(upPressed ){
-                    if(curPlayer.y >= 0){
-                        curPlayer.y -= playerSpeed;
-                    }
-                }
-                if(downPressed ){
-                    if(curPlayer.y <= 768){
-                        curPlayer.y += playerSpeed;
-                    }
-                }
+        let timer = 10.00;
+        function renderTimer(){
+            ctx.beginPath();
+            ctx.fillStyle = '#000000';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Timer ${timer.toFixed(2)}`,30,50);
+            ctx.closePath();
 
-                sendData();
+        }
+
+        function renderGame() {            
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                collisionDetection();
+                renderStage();
+
+                renderPlayers();
+                renderEnemys();
+                renderItems();
+                renderTimer();
+                if(balls.length){
+                    sendData();
+                }
+                if(isStart){
+                    timer -= 0.010;
+                    if(parseInt(timer) <= 0){
+                        timer = 0;
+                    }
+                }
+                renderTimer();
             }
         
         var isStart = false;
@@ -476,8 +517,6 @@
 
         setInterval(update, 10);
 
-
-
         function start(){
             isStart = true;
             socket.emit('start', { id: myId});
@@ -487,9 +526,10 @@
             isStart = true;
         })
 
-        
+
     </script>
     <script>
+
     </script>
     <div style="text-align: center;">
         <button style= "width: 150px; height: 50px;" id="my_btn" onclick="start()";><font size ="5em">Game Start</font></button>
@@ -497,7 +537,9 @@
     <div style="text-align: center;">
         <font size="5em" color="green">
             <span>키보드 방향키를 통해 움직이세요. </span>
+            <p>Move through the Arrow key on the keyboard.</p> 
             <p>Player0가 Host입니다. Host가 시작버튼을 눌러야 게임이 시작됩니다.</p> 
+            <p>Player0 is Host. The game starts only when the Host presses the Start button. </p> 
         </font>
          
     </div>
