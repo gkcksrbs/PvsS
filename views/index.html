@@ -132,6 +132,18 @@
                 }
             }
         }
+
+        function itemCollisionDetection(){
+            let ball = ballMap[myId]
+            for(var i=0; i<items.length; i++){
+                if(Math.sqrt((ball.x-items[i].startingX)**2+(ball.y-items[i].startingY)**2)<=itemRadius+radius){
+                    // ball.state=0;
+                    socket.emit('item_acquire',{id:myId});
+                    break;
+                }
+            }
+        }
+
         var socket = io();
 
         socket.on('force_disconnect', function(data){
@@ -230,6 +242,7 @@
         function renderGame() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 collisionDetection();
+                itemCollisionDetection();
                 for (let i = 0; i < balls.length; i++) {
                     let ball = balls[i];
                     if (ball.state == 0){

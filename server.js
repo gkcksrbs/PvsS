@@ -253,5 +253,15 @@ io.on('connection', function(socket) {
                     } 
                 })
 
+    socket.on('item_acquire', function(data){
+        // for(var i =0; i<balls.length; i++){
+        //     if(balls[i].id==data.id){
+        //         balls[i].state=2;
+        //         break;
+        //     }
+        // }
+        socket.broadcast.emit('item_update',{id: data})
+    })
+
 })
 
